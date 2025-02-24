@@ -3,6 +3,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 from fpdf import FPDF
 from django.conf import settings
+from celery import shared_task
 
 
 def apply_perspective_effect(image):
@@ -11,9 +12,9 @@ def apply_perspective_effect(image):
     return image.rotate(angle, expand=True)
 
 
+@shared_task
 def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), background_image="background_2.jpeg", x_offset=500,
-                        word_spacing=15, output_pdf="output.pdf"):
-    print(font)
+                        word_spacing=15, output_pdf="output.pdf", is_image: bool = True):
     # Get the first static directory and build the font path
     font_path = os.path.join(settings.STATICFILES_DIRS[0], f"api_data/fonts/{font}")
     background_image = os.path.join(settings.STATICFILES_DIRS[0], f"api_data/background_images/{background_image}")
@@ -61,11 +62,15 @@ def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), 
         transformed_image = apply_perspective_effect(bg)
 
         # Save image with a unique filename
-        image_filename = f"temp_handwriting_{len(image_files)}.jpg"
+        image_filename = os.path.join('media', f"temp_handwriting_{len(image_files)}.jpg")
         transformed_image.save(image_filename, "JPEG")
         image_files.append(image_filename)
 
         print(f"Generated image: {image_filename} with word index starting at {word_index}")
+
+    if is_image:
+        image_paths = [os.path.abspath(img) for img in image_files]  # Convert all to absolute paths
+        return image_paths  # Return the list properly
 
     # Step 2: Create PDF and add all images
     pdf = FPDF()
@@ -75,24 +80,12 @@ def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), 
 
     # Save final PDF
     pdf.output(f'media/{output_pdf}')
-    print(f"PDF saved as {output_pdf}")
 
     # Step 3: Clean up temporary images
-    for img_file in image_files:
-        os.remove(img_file)
-        print(f"Deleted temporary file: {img_file}")
+    # for img_file in image_files:
+    #     os.remove(img_file)
+    #     print(f"Deleted temporary file: {img_file}")
 
     pdf_path = os.path.abspath(f"media/{output_pdf}")  # Get full path
     return pdf_path  # Return the full path instead of just printing it
 
-# # Example usage
-# text_to_handwriting(
-#     text="This is a long text that should continue across multiple pages instead of repeating the same content on every page. "
-#          "Each page should start where the previous one left off, just like writing on paper. "
-#          "This should look like a natural handwritten document taken from a phone." * 80,
-#     font_path="static/handwriting.ttf",
-#     ink_color=(50, 30, 20),
-#     background_image="background_2.jpg",
-#     x_offset=50,
-#     word_spacing=15
-# )

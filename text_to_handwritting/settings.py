@@ -11,16 +11,18 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os.path
 from pathlib import Path
-
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-($1()(5=+w+^6)$jv%bno+7&j7!3o@5(5s9y4a&+h=wr5a@7-s'
+DJANGO_SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'qwerty')
+SECRET_KEY = DJANGO_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -138,3 +140,29 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Redis password in server
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', None)
+REDIS_HOST = os.getenv('REDIS_HOST', None)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_HOST,
+    }
+}
+
+# Celery settings
+CELERY_BROKER_URL = REDIS_HOST
+CELERY_RESULT_BACKEND = f"{REDIS_HOST}/0"
+
+# Initiating translation .po files
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'locale'),
+]

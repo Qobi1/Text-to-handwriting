@@ -12,7 +12,7 @@ class TextToHandwritingSerializer(serializers.Serializer):
         required=False
     )
     x_offset = serializers.IntegerField(allow_null=True, required=False)
-    word_spacing = serializers.IntegerField(allow_null=True, required=True)
+    word_spacing = serializers.IntegerField(allow_null=True, required=False)
     font = serializers.CharField(allow_null=True, allow_blank=True, required=False)
 
     def validate_font(self, value):
