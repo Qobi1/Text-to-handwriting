@@ -4,6 +4,8 @@ from PIL import Image, ImageDraw, ImageFont
 from fpdf import FPDF
 from django.conf import settings
 from celery import shared_task
+from datetime import datetime
+import uuid
 
 
 def apply_perspective_effect(image):
@@ -13,14 +15,19 @@ def apply_perspective_effect(image):
 
 
 @shared_task
-def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), background_image="background_2.jpeg", x_offset=500,
-                        word_spacing=15, output_pdf="output.pdf", is_image: bool = True):
+def text_to_handwriting(
+        text: str, font: str = "handwriting_1.ttf", ink_color=(50, 30, 20),
+        background_image: str = "background_2.jpeg", x_offset: int = 50,
+        word_spacing: int = 15, font_size: int = 50, line_spacing: int = 10,
+        is_image: bool = True
+):
     # Get the first static directory and build the font path
     font_path = os.path.join(settings.STATICFILES_DIRS[0], f"api_data/fonts/{font}")
     background_image = os.path.join(settings.STATICFILES_DIRS[0], f"api_data/background_images/{background_image}")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
     # Load font
-    font = ImageFont.truetype(font_path, size=50)
+    font = ImageFont.truetype(font_path, size=font_size)
 
     # Load background image to get dimensions
     bg_sample = Image.open(background_image)
@@ -41,13 +48,13 @@ def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), 
 
         while word_index < len(words):
             word = words[word_index]
-            bbox = draw.textbbox((0, 0), word, font=font)
+            bbox = draw.textbbox((0, 0), word, font=font) or (0, 0, 0, 0)
             word_width, word_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
             # Move to next line if needed
             if x + word_width > max_width - 20:
                 x = x_offset
-                y += word_height + 10
+                y += word_height + line_spacing
 
             # If text reaches the bottom, break and continue on a new page
             if y + word_height > max_height - 50:
@@ -60,9 +67,8 @@ def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), 
 
         # Apply rotation effect
         transformed_image = apply_perspective_effect(bg)
-
         # Save image with a unique filename
-        image_filename = os.path.join('media', f"temp_handwriting_{len(image_files)}.jpg")
+        image_filename = os.path.join('media', f"handwriting_{uuid.uuid4()}.jpg")
         transformed_image.save(image_filename, "JPEG")
         image_files.append(image_filename)
 
@@ -79,13 +85,33 @@ def text_to_handwriting(text, font="handwriting_1.ttf", ink_color=(50, 30, 20), 
         pdf.image(img_file, x=10, y=10, w=pdf.w - 20)
 
     # Save final PDF
-    pdf.output(f'media/{output_pdf}')
+    pdf.output(f'media/handwriting_{timestamp}.pdf')
 
     # Step 3: Clean up temporary images
     # for img_file in image_files:
     #     os.remove(img_file)
     #     print(f"Deleted temporary file: {img_file}")
 
-    pdf_path = os.path.abspath(f"media/{output_pdf}")  # Get full path
+    pdf_path = os.path.abspath(f"media/handwriting_{timestamp}.pdf")  # Get full path
     return pdf_path  # Return the full path instead of just printing it
+
+
+def convert_images_to_pdf(image_files, output_pdf: str = f'output_{uuid.uuid4()}.pdf'):
+    """Converts a list of images into a single PDF file."""
+    pdf = FPDF()
+    for img_file in image_files:
+        pdf.add_page()
+        pdf.image(img_file, x=10, y=10, w=pdf.w - 20)
+        # Use MEDIA_ROOT instead of MEDIA_URL
+    pdf_path = os.path.join(settings.MEDIA_ROOT, output_pdf)
+
+    # Ensure the media directory exists
+    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+
+    pdf.output(pdf_path)
+    return os.path.abspath(pdf_path)
+
+
+
+
 

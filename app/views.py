@@ -8,3 +8,7 @@ def index(request):
 
 def image_to_text(request):
     return render(request, 'image_to_text.html')
+
+
+def contact(request):
+    return render(request, 'contact.html')

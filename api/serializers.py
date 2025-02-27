@@ -13,7 +13,10 @@ class TextToHandwritingSerializer(serializers.Serializer):
     )
     x_offset = serializers.IntegerField(allow_null=True, required=False)
     word_spacing = serializers.IntegerField(allow_null=True, required=False)
-    font = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+    font = serializers.CharField(required=False)
+    is_image = serializers.BooleanField(default=True)
+    font_size = serializers.IntegerField(required=False)
+    line_spacing = serializers.IntegerField(required=False)
 
     def validate_font(self, value):
         fonts = {
@@ -41,3 +44,11 @@ class TextToHandwritingSerializer(serializers.Serializer):
                 """Choose one of the current options: handwriting_1, handwriting_2, handwriting_3, handwriting_4, handwriting_5, handwriting_6, handwriting_7, handwriting_8, handwriting_9, handwriting_10, handwriting_11, handwriting_12, handwriting_13, handwriting_14, handwriting_15, handwriting_16, handwriting_17, handwriting_18""")
 
         return fonts[value]
+
+
+class ConvertImageToPdfSerializer(serializers.Serializer):
+    image_files = serializers.ListField(
+        child=serializers.CharField(),  # Each item in the list should be a string (image path)
+        allow_empty=False  # Prevent empty lists if necessary
+    )
+
