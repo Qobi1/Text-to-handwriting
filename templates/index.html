@@ -13,7 +13,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://yourwebsite.com">
     <title>Handwriting Generator</title>
-    <link rel="icon" href="favicon.ico">
+    <link rel="icon" href="{% static 'favicon.ico' %}">
     <!-- External Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Quicksand:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -131,7 +131,8 @@
         }
         .editable-area {
             text-align: left;
-            background-image: url("{% static 'background_2.jpg' %}");
+            background-image: url("static/api_data/background_images/1.jpeg");
+
             background-repeat: no-repeat;
             width: 100%;
             background-size: cover;
@@ -146,7 +147,7 @@
         /* Define your custom font in CSS */
         @font-face {
             font-family: 'handwriting_1';
-            src: url("{% static 'handwritting_1.ttf' %}") format('truetype');
+            src: url("{% static 'api_data/fonts/handwriting_1.ttf' %}") format('truetype');
             font-weight: normal;
             font-style: normal;
         }
@@ -154,7 +155,7 @@
                 /* Define your custom font in CSS */
         @font-face {
             font-family: 'handwriting_2';
-            src: url("{% static 'handwritting_1.ttf' %}") format('truetype');
+            src: url("{% static 'api_data/fonts/handwriting_1.ttf' %}") format('truetype');
             font-weight: normal;
             font-style: normal;
         }
@@ -194,7 +195,7 @@
                 <option value="Lobster">Lobster</option>
                 <option value="Pacifico">Pacifico</option>
                 <option value="handwriting_1">Handwriting 1</option>
-                <option value="handwriting_2">Handwriting 1</option>
+                <option value="handwriting_2">Handwriting 2</option>
             </select>
 
             <div class="file-input-container">

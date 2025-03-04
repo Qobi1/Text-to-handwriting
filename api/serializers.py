@@ -11,7 +11,7 @@ class TextToHandwritingSerializer(serializers.Serializer):
         allow_blank=True,
         required=False
     )
-    x_offset = serializers.IntegerField(allow_null=True, required=False)
+    x_offset = serializers.IntegerField(allow_null=True, required=False, default=50)
     word_spacing = serializers.IntegerField(allow_null=True, required=False)
     font = serializers.CharField(required=False)
     is_image = serializers.BooleanField(default=True)

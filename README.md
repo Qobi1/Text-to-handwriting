@@ -1,4 +1,3 @@
-# Text-to-handwriting
 # Text to Handwriting Generator (Django + Celery + Redis)
 
 ## Introduction

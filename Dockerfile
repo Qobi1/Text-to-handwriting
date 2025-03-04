@@ -2,7 +2,7 @@
 FROM python:3.10
 
 # Set the working directory inside the container
-WORKDIR /app
+WORKDIR /text_to_handwriting
 
 # Copy requirements and install dependencies
 COPY requirements.txt .

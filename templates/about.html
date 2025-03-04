@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block context %}
+{% load static %}
+
+<!-- About Section -->
+<section class="about_section layout_padding">
+  <div class="container">
+    <div class="row align-items-center">
+      <!-- Text Content -->
+      <div class="col-lg-5 col-md-6 text-center text-md-left">
+        <div class="detail-box">
+          <h2>About Us</h2>
+          <p>
+            Welcome to <strong>[Your Website Name]</strong>, your ultimate tool for converting typed text into
+            natural, realistic handwriting. Whether you’re a student, professional, or just someone who
+            loves the personal touch of handwritten text, our platform makes it effortless.
+          </p>
+          <p>
+            Using advanced AI technology, we provide fully customizable handwriting styles, allowing you to
+            personalize everything from ink color to stroke thickness. Our tool is perfect for students, teachers,
+            businesses, and creatives looking to enhance their written communication.
+          </p>
+          <a href="{% url 'contact' %}" class="btn btn-primary">Contact Us</a>
+        </div>
+      </div>
+
+      <!-- Image Content -->
+      <div class="col-lg-7 col-md-6 text-center">
+        <div class="img-box">
+          <img src="{% static 'images/logo.webp' %}" alt="About Us Image" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End About Section -->
+
+{% endblock %}

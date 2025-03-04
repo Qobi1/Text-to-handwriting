@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block context %}
+
+<div class="textarea-container">
+    <!-- Editable Text Area -->
+    <div id="editable-text" class="editable-area" contenteditable="true"></div>
+
+    <!-- Configuration Panel -->
+    <div class="config-panel">
+        <h3>Customize Your Handwriting</h3>
+
+        <label for="font-size">Font Size</label>
+        <input type="range" id="font-size" min="10" max="60" value="24">
+
+        <label for="line-spacing">Line Spacing</label>
+        <input type="range" id="line-spacing" min="2" max="20" step="1" value="2">
+
+        <label for="letter-spacing">Letter Spacing</label>
+        <input type="range" id="letter-spacing" min="0" max="10" value="0">
+
+        <label for="leftMargin">Left Margin:</label>
+        <input type="range" id="leftMargin" min="0" max="200" value="50" step="5">
+
+        <label for="ink-color">Ink Color</label>
+        <input type="color" id="ink-color" value="#000000">
+
+        <label for="handwriting-font">Handwriting Font</label>
+        <select id="handwriting-font">
+            <option value="handwriting_1">Handwriting 1</option>
+            <option value="handwriting_2">Handwriting 2</option>
+            <option value="handwriting_3">Handwriting 3</option>
+            <option value="handwriting_4">Handwriting 4</option>
+            <option value="handwriting_5">Handwriting 5</option>
+            <option value="handwriting_6">Handwriting 6</option>
+            <option value="handwriting_7">Handwriting 7</option>
+            <option value="handwriting_8">Handwriting 8</option>
+            <option value="handwriting_9">Handwriting 9</option>
+            <option value="handwriting_10">Handwriting 10</option>
+            <option value="handwriting_11">Handwriting 11</option>
+            <option value="handwriting_12">Handwriting 12</option>
+            <option value="handwriting_13">Handwriting 13</option>
+            <option value="handwriting_14">Handwriting 14</option>
+            <option value="handwriting_15">Handwriting 15</option>
+            <option value="handwriting_16">Handwriting 16</option>
+            <option value="handwriting_17">Handwriting 17</option>
+            <option value="handwriting_18">Handwriting 18</option>
+        </select>
+
+        <div class="file-input-container">
+            <div>
+                <label for="upload-font">Upload Handwriting Font</label>
+                <input type="file" id="upload-font" accept=".ttf, .otf">
+            </div>
+            <div>
+                <label for="upload-background">Upload Background Image</label>
+                <input type="file" id="upload-background" accept="image/*">
+            </div>
+        </div>
+
+        <button id="generate-image">Generate Image</button>
+        <button id="generate-pdf">Generate PDF</button>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>
+
+<script>
+    const editableText = document.getElementById('editable-text');
+    const fontSizeInput = document.getElementById('font-size');
+    const lineSpacingInput = document.getElementById('line-spacing');
+    const letterSpacingInput = document.getElementById('letter-spacing');
+    const leftMargin = document.getElementById('leftMargin');
+    const inkColorInput = document.getElementById('ink-color');
+    const handwritingFontSelect = document.getElementById('handwriting-font');
+    const uploadFontInput = document.getElementById('upload-font');
+    const uploadBackgroundInput = document.getElementById('upload-background');
+    const generateImageBtn = document.getElementById('generate-image');
+    const generatePdfBtn = document.getElementById('generate-pdf');
+
+    window.onload = function () {
+        handwritingFontSelect.value = 'handwriting_1'; // Set dropdown to handwriting_1
+        editableText.style.fontFamily = 'handwriting_1'; // Apply the font
+        editableText.style.color = '#0000FF'; // Set text color to blue
+        inkColorInput.value = '#0000FF'; // Update color picker to blue
+    };
+
+    // Update styles dynamically
+    fontSizeInput.addEventListener('input', () => {
+        editableText.style.fontSize = `${fontSizeInput.value}px`;
+    });
+
+    lineSpacingInput.addEventListener('input', () => {
+        editableText.style.lineHeight = lineSpacingInput.value;
+    });
+
+    letterSpacingInput.addEventListener('input', () => {
+        editableText.style.letterSpacing = `${letterSpacingInput.value}px`;
+    });
+
+    inkColorInput.addEventListener('input', () => {
+        editableText.style.color = inkColorInput.value;
+    });
+
+    handwritingFontSelect.addEventListener('change', () => {
+        editableText.style.fontFamily = handwritingFontSelect.value;
+    });
+
+    // Handle custom handwriting font upload
+    uploadFontInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const newFont = new FontFace('CustomHandwriting', e.target.result);
+                newFont.load().then(() => {
+                    document.fonts.add(newFont);
+                    editableText.style.fontFamily = 'CustomHandwriting';
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    });
+
+    // Handle background image upload
+    uploadBackgroundInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            editableText.style.backgroundImage = `url(${url})`;
+            editableText.style.backgroundSize = 'cover';
+            editableText.style.backgroundPosition = 'center';
+        }
+    });
+
+    leftMargin.addEventListener("input", (event) => {
+       editableText.style.paddingLeft = event.target.value + "px";
+    });
+
+
+    document.getElementById("generateButton").addEventListener("click", function() {
+        const text = document.getElementById("editable-area").innerText;
+        const xOffset = document.getElementById("leftMargin").value;
+
+        fetch("/api/generate-handwriting/", {
+            method: "POST",
+            body: JSON.stringify({ text: text, x_offset: xOffset }),
+            headers: { "Content-Type": "application/json" }
+        });
+    });
+
+
+    document.getElementById("generate-image").addEventListener("click", async function () {
+        const editableText = document.getElementById("editable-text").innerText.trim();
+        const fontSize = document.getElementById("font-size").value;
+        const lineSpacing = document.getElementById("line-spacing").value;
+        const letterSpacing = document.getElementById("letter-spacing").value;
+        const inkColor = document.getElementById("ink-color").value;
+        const handwritingFont = document.getElementById("handwriting-font").value;
+
+        const requestData = {
+            text: editableText,
+            ink_color: inkColor,
+            font_size: parseInt(fontSize),
+            line_spacing: parseInt(lineSpacing), // Ensure it's an integer
+            word_spacing: parseInt(letterSpacing),
+            font: handwritingFont,
+            is_image: true,
+            x_offset: parseInt(leftMargin)
+        };
+        console.log(requestData.word_spacing)
+
+        try {
+            console.log("📤 Sending request:", requestData);
+
+            // Step 1: Send request to API
+            const response = await fetch("/api/text-to-handwriting/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData),
+            });
+
+            console.log("📥 Response received:", response);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("❌ Backend Error Response:", errorData);
+                throw new Error("Failed to send request");
+            }
+
+            const data = await response.json();
+            console.log("✅ Task Created:", data);
+
+            const taskId = data.Response;
+
+            // Step 2: Poll for task completion
+            const images = await pollTaskStatus(taskId);
+
+            // Step 3: Show images in a popup
+            console.log("🖼️ Images received:", images);
+            showPopup(images);
+        } catch (error) {
+            console.error("⚠️ Error:", error);
+        }
+    });
+
+    async function pollTaskStatus(taskId) {
+        return new Promise(async (resolve) => {
+            let status = "PENDING";
+            let images = [];
+
+            while (status !== "SUCCESS" && status !== "completed") {
+                const response = await fetch(`/api/task-status/${taskId}/`);
+                const data = await response.json();
+                console.log("📢 Task Status Response:", data);
+
+                status = data.status;
+                if (status === "SUCCESS" || status === "completed") {
+                    images = data.path;  // ✅ Extract `path` instead of `images`
+                    console.log("🖼️ Images received:", images);
+                    break;
+                }
+                await new Promise((r) => setTimeout(r, 2000)); // Wait 2 seconds before retrying
+            }
+            resolve(images);
+        });
+    }
+
+
+    function showPopup(images) {
+    if (!images || images.length === 0) {
+        console.error("❌ No images received.");
+        return;
+    }
+
+    console.log("🖼️ Generating popup with images:", images);
+
+    let popupHtml = `<div class="popup-overlay">
+        <div class="popup-container">
+            <h2>Select an Image</h2>
+            <div class="image-gallery">`;
+
+    images.forEach((img, index) => {
+        popupHtml += `<div class="image-item">
+            <input type="checkbox" id="img${index}" value="${img}">
+            <label for="img${index}">
+                <img src="${img}" alt="Generated Image" style="width: 200px; height: auto;">
+            </label>
+        </div>`;
+    });
+
+    popupHtml += `</div>
+        <button id="cancel-popup">Cancel</button>
+        <button id="download-selected">Download Selected</button>
+        <button id="generate-pdf">Generate PDF</button>
+    </div></div>`;
+
+    console.log("✅ Injecting popup into DOM");
+
+    document.body.insertAdjacentHTML("beforeend", popupHtml);
+
+    document.getElementById("cancel-popup").addEventListener("click", () => {
+        document.querySelector(".popup-overlay").remove();
+    });
+
+    document.getElementById("download-selected").addEventListener("click", () => {
+        document.querySelectorAll(".image-item input:checked").forEach((checkbox) => {
+            const link = document.createElement("a");
+            link.href = checkbox.value;
+            link.download = "handwriting.png";
+            link.click();
+        });
+    });
+
+    document.getElementById("generate-pdf").addEventListener("click", () => {
+        const pdf = new jsPDF();
+        document.querySelectorAll(".image-item input:checked").forEach((checkbox, index) => {
+            const img = new Image();
+            img.src = checkbox.value;
+            img.onload = function () {
+                pdf.addImage(img, "PNG", 10, 10 + index * 50, 180, 0);
+                if (index === document.querySelectorAll(".image-item input:checked").length - 1) {
+                    pdf.save("handwriting.pdf");
+                }
+            };
+        });
+    });
+
+    console.log("🎉 Popup should now be visible!");
+}
+
+
+</script>
+{% endblock %}

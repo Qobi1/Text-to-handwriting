@@ -1,3 +1,6 @@
+import os
+
+from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_201_CREATED
@@ -22,6 +25,7 @@ class TextToHandwritingAPIView(APIView):
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
+        print(request.data)
         if serializer.is_valid():
             task = text_to_handwriting.delay(**serializer.data)
             return Response({"Response": task.id}, status=HTTP_200_OK, content_type='application/json')
@@ -63,7 +67,15 @@ class TaskStatusView(APIView):
     def get(self, request, task_id):
         task_result = AsyncResult(task_id)
         if task_result.state == "SUCCESS":
-            return Response({"status": "completed", "pdf_path": task_result.result}, status=HTTP_200_OK)
+            # Convert file paths to URLs
+            pdf_paths = task_result.result  # List of local file paths
+            media_url = request.build_absolute_uri(settings.MEDIA_URL)  # Base media URL
+
+            image_urls = [
+                media_url + os.path.basename(path) for path in pdf_paths
+            ]
+
+            return Response({"status": "completed", "path": image_urls}, status=HTTP_200_OK)
         elif task_result.state == "FAILURE":
             return Response({"status": "failed", "error": str(task_result.info)}, status=HTTP_400_BAD_REQUEST)
         else:
