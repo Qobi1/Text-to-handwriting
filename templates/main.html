@@ -19,9 +19,6 @@
         <label for="letter-spacing">Letter Spacing</label>
         <input type="range" id="letter-spacing" min="0" max="10" value="0">
 
-        <label for="leftMargin">Left Margin:</label>
-        <input type="range" id="leftMargin" min="0" max="200" value="50" step="5">
-
         <label for="ink-color">Ink Color</label>
         <input type="color" id="ink-color" value="#000000">
 
@@ -71,7 +68,6 @@
     const fontSizeInput = document.getElementById('font-size');
     const lineSpacingInput = document.getElementById('line-spacing');
     const letterSpacingInput = document.getElementById('letter-spacing');
-    const leftMargin = document.getElementById('leftMargin');
     const inkColorInput = document.getElementById('ink-color');
     const handwritingFontSelect = document.getElementById('handwriting-font');
     const uploadFontInput = document.getElementById('upload-font');
@@ -134,14 +130,8 @@
         }
     });
 
-    leftMargin.addEventListener("input", (event) => {
-       editableText.style.paddingLeft = event.target.value + "px";
-    });
-
-
-    document.getElementById("generateButton").addEventListener("click", function() {
+    document.getElementById("generate-image").addEventListener("click", function() {
         const text = document.getElementById("editable-area").innerText;
-        const xOffset = document.getElementById("leftMargin").value;
 
         fetch("/api/generate-handwriting/", {
             method: "POST",
@@ -167,7 +157,7 @@
             word_spacing: parseInt(letterSpacing),
             font: handwritingFont,
             is_image: true,
-            x_offset: parseInt(leftMargin)
+            x_offset: 10
         };
         console.log(requestData.word_spacing)
 

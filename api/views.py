@@ -25,7 +25,6 @@ class TextToHandwritingAPIView(APIView):
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        print(request.data)
         if serializer.is_valid():
             task = text_to_handwriting.delay(**serializer.data)
             return Response({"Response": task.id}, status=HTTP_200_OK, content_type='application/json')
