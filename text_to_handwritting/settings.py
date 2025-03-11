@@ -166,3 +166,5 @@ CELERY_RESULT_BACKEND = f"{REDIS_HOST}/0"
 LOCALE_PATHS = [
     os.path.join(BASE_DIR, 'locale'),
 ]
+
+X_FRAME_OPTIONS = "SAMEORIGIN"

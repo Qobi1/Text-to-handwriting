@@ -1,5 +1,4 @@
 import os
-
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.response import Response
@@ -7,15 +6,17 @@ from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_201_CR
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.renderers import JSONRenderer
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser
 from api.serializers import TextToHandwritingSerializer, ConvertImageToPdfSerializer
 from app.tasks import text_to_handwriting, convert_images_to_pdf
 from celery.result import AsyncResult
+from django.core.files.storage import default_storage
+
 
 class TextToHandwritingAPIView(APIView):
     permission_classes = [AllowAny]
     renderer_classes = [JSONRenderer]
-    parser_classes = [JSONParser]
+    parser_classes = [JSONParser, MultiPartParser]
     serializer_class = TextToHandwritingSerializer
 
     @extend_schema(
@@ -25,8 +26,22 @@ class TextToHandwritingAPIView(APIView):
     )
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
+        background_image = request.FILES.get("background_image", None)  # Get uploaded file
+
         if serializer.is_valid():
-            task = text_to_handwriting.delay(**serializer.data)
+            validated_data = serializer.validated_data
+            if background_image:
+                # Save file to media/uploads/
+                upload_dir = os.path.join(settings.MEDIA_ROOT, "uploaded_backgrounds")
+                os.makedirs(upload_dir, exist_ok=True)  # Ensure the directory exists
+
+                file_path = os.path.join(upload_dir, background_image.name)
+                with default_storage.open(file_path, "wb") as f:
+                    for chunk in background_image.chunks():
+                        f.write(chunk)
+                validated_data["background_image"] = file_path
+
+            task = text_to_handwriting.delay(**validated_data)
             return Response({"Response": task.id}, status=HTTP_200_OK, content_type='application/json')
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST, content_type='application/json')
 
@@ -66,13 +81,20 @@ class TaskStatusView(APIView):
     def get(self, request, task_id):
         task_result = AsyncResult(task_id)
         if task_result.state == "SUCCESS":
-            # Convert file paths to URLs
-            pdf_paths = task_result.result  # List of local file paths
-            media_url = request.build_absolute_uri(settings.MEDIA_URL)  # Base media URL
+            # Ensure it's a single file path
+            if isinstance(task_result.result, str) and task_result.result.endswith('pdf'):
+                # Get the filename from the full file path
+                filename = os.path.basename(task_result.result)
+                # Build the URL to access the file via Django
+                image_urls = request.build_absolute_uri(settings.MEDIA_URL + filename)
+            else:
+                # Convert file paths to URLs
+                pdf_paths = task_result.result  # List of local file paths
+                media_url = request.build_absolute_uri(settings.MEDIA_URL)  # Base media URL
 
-            image_urls = [
-                media_url + os.path.basename(path) for path in pdf_paths
-            ]
+                image_urls = [
+                    media_url + os.path.basename(path) for path in pdf_paths
+                ]
 
             return Response({"status": "completed", "path": image_urls}, status=HTTP_200_OK)
         elif task_result.state == "FAILURE":

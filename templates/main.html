@@ -45,10 +45,10 @@
         </select>
 
         <div class="file-input-container">
-            <div>
-                <label for="upload-font">Upload Handwriting Font</label>
-                <input type="file" id="upload-font" accept=".ttf, .otf">
-            </div>
+<!--            <div>-->
+<!--                <label for="upload-font">Upload Handwriting Font</label>-->
+<!--                <input type="file" id="upload-font" accept=".ttf, .otf">-->
+<!--            </div>-->
             <div>
                 <label for="upload-background">Upload Background Image</label>
                 <input type="file" id="upload-background" accept="image/*">
@@ -74,6 +74,7 @@
     const uploadBackgroundInput = document.getElementById('upload-background');
     const generateImageBtn = document.getElementById('generate-image');
     const generatePdfBtn = document.getElementById('generate-pdf');
+    const backgroundFile = document.getElementById("upload-background").files[0];
 
     window.onload = function () {
         handwritingFontSelect.value = 'handwriting_1'; // Set dropdown to handwriting_1
@@ -103,21 +104,6 @@
         editableText.style.fontFamily = handwritingFontSelect.value;
     });
 
-    // Handle custom handwriting font upload
-    uploadFontInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const newFont = new FontFace('CustomHandwriting', e.target.result);
-                newFont.load().then(() => {
-                    document.fonts.add(newFont);
-                    editableText.style.fontFamily = 'CustomHandwriting';
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-    });
 
     // Handle background image upload
     uploadBackgroundInput.addEventListener('change', (event) => {
@@ -130,15 +116,35 @@
         }
     });
 
-    document.getElementById("generate-image").addEventListener("click", function() {
-        const text = document.getElementById("editable-area").innerText;
 
-        fetch("/api/generate-handwriting/", {
-            method: "POST",
-            body: JSON.stringify({ text: text, x_offset: xOffset }),
-            headers: { "Content-Type": "application/json" }
+
+    function getTextPositions() {
+        const editableText = document.getElementById("editable-text");
+        const words = editableText.innerText.split(/\s+/);  // Get words while preserving spaces
+        const textData = [];
+
+        words.forEach((word, index) => {
+            const span = document.createElement("span");
+            span.textContent = word + " ";  // Preserve space after each word
+            span.style.visibility = "hidden";  // Make it invisible
+            editableText.appendChild(span);
+
+            const rect = span.getBoundingClientRect(); // Get the word's position
+            textData.push({
+                text: word,
+                x: rect.left - editableText.getBoundingClientRect().left,  // Relative X
+                y: rect.top - editableText.getBoundingClientRect().top,    // Relative Y
+                width: rect.width,
+                height: rect.height
+            });
+
+            editableText.removeChild(span);  // Cleanup
         });
-    });
+
+        return textData;
+    }
+
+
 
 
     document.getElementById("generate-image").addEventListener("click", async function () {
@@ -148,27 +154,31 @@
         const letterSpacing = document.getElementById("letter-spacing").value;
         const inkColor = document.getElementById("ink-color").value;
         const handwritingFont = document.getElementById("handwriting-font").value;
+        const backgroundFile = document.getElementById("upload-background").files[0];
 
-        const requestData = {
-            text: editableText,
-            ink_color: inkColor,
-            font_size: parseInt(fontSize),
-            line_spacing: parseInt(lineSpacing), // Ensure it's an integer
-            word_spacing: parseInt(letterSpacing),
-            font: handwritingFont,
-            is_image: true,
-            x_offset: 10
-        };
-        console.log(requestData.word_spacing)
+        // ✅ Use FormData for file uploads
+        const formData = new FormData();
+        formData.append("text", editableText);
+        formData.append("ink_color", inkColor);
+        formData.append("font_size", parseInt(fontSize));
+        formData.append("line_spacing", parseInt(lineSpacing));
+        formData.append("word_spacing", parseInt(letterSpacing));
+        formData.append("font", handwritingFont);
+        formData.append("is_image", true);
+        formData.append("x_offset", 10);
+
+        // ✅ Append the background image **only if it's selected**
+        if (backgroundFile) {
+            formData.append("background_image", backgroundFile);
+        }
 
         try {
-            console.log("📤 Sending request:", requestData);
+            console.log("📤 Sending request:", formData);
 
-            // Step 1: Send request to API
+            // ✅ Remove "Content-Type": "application/json" (FormData sets it automatically)
             const response = await fetch("/api/text-to-handwriting/", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestData),
+                body: formData,
             });
 
             console.log("📥 Response received:", response);
@@ -184,16 +194,17 @@
 
             const taskId = data.Response;
 
-            // Step 2: Poll for task completion
+            // Poll for task completion
             const images = await pollTaskStatus(taskId);
 
-            // Step 3: Show images in a popup
+            // Show images in a popup
             console.log("🖼️ Images received:", images);
             showPopup(images);
         } catch (error) {
             console.error("⚠️ Error:", error);
         }
     });
+
 
     async function pollTaskStatus(taskId) {
         return new Promise(async (resolve) => {
@@ -211,6 +222,7 @@
                     console.log("🖼️ Images received:", images);
                     break;
                 }
+
                 await new Promise((r) => setTimeout(r, 2000)); // Wait 2 seconds before retrying
             }
             resolve(images);
@@ -219,32 +231,37 @@
 
 
     function showPopup(images) {
-    if (!images || images.length === 0) {
-        console.error("❌ No images received.");
-        return;
+        if (!images || images.length === 0) {
+            console.error("❌ No images received.");
+            return;
     }
 
     console.log("🖼️ Generating popup with images:", images);
 
-    let popupHtml = `<div class="popup-overlay">
-        <div class="popup-container">
-            <h2>Select an Image</h2>
-            <div class="image-gallery">`;
+    let popupHtml = `
+        <div class="popup-overlay">
+            <div class="popup-container">
+                <h2>Select an Image</h2>
+                <div class="image-gallery">`;
 
     images.forEach((img, index) => {
-        popupHtml += `<div class="image-item">
-            <input type="checkbox" id="img${index}" value="${img}">
-            <label for="img${index}">
-                <img src="${img}" alt="Generated Image" style="width: 200px; height: auto;">
-            </label>
-        </div>`;
+        popupHtml += `
+            <div class="image-item">
+                <input type="checkbox" id="img${index}" value="${img}">
+                <label for="img${index}">
+                    <img src="${img}" alt="Generated Image">
+                </label>
+            </div>`;
     });
 
-    popupHtml += `</div>
-        <button id="cancel-popup">Cancel</button>
-        <button id="download-selected">Download Selected</button>
-        <button id="generate-pdf">Generate PDF</button>
-    </div></div>`;
+    popupHtml += `
+                </div>
+                <div class="popup-buttons">
+                    <button id="cancel-popup">Close</button>
+                    <button id="download-selected">Download Selected</button>
+                </div>
+            </div>
+        </div>`;
 
     console.log("✅ Injecting popup into DOM");
 
@@ -279,6 +296,94 @@
 
     console.log("🎉 Popup should now be visible!");
 }
+
+
+
+
+
+
+    document.getElementById("generate-pdf").addEventListener("click", async function () {
+        const editableText = document.getElementById("editable-text").innerText.trim();
+        const fontSize = document.getElementById("font-size").value;
+        const lineSpacing = document.getElementById("line-spacing").value;
+        const letterSpacing = document.getElementById("letter-spacing").value;
+        const inkColor = document.getElementById("ink-color").value;
+        const handwritingFont = document.getElementById("handwriting-font").value;
+        const backgroundFile = document.getElementById("upload-background").files[0];
+
+        const formData = new FormData();
+        formData.append("text", editableText);
+        formData.append("ink_color", inkColor);
+        formData.append("font_size", parseInt(fontSize));
+        formData.append("line_spacing", parseInt(lineSpacing));
+        formData.append("word_spacing", parseInt(letterSpacing));
+        formData.append("font", handwritingFont);
+        formData.append("is_image", false);  // ✅ PDF Request
+        formData.append("x_offset", 50);
+
+        if (backgroundFile) {
+            formData.append("background_image", backgroundFile);
+        }
+        if (backgroundFile) {
+            formData.append("background_image", backgroundFile);
+        }
+
+        try {
+            console.log("📤 Sending PDF request:", formData);
+
+            const response = await fetch("/api/text-to-handwriting/", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("❌ Backend Error Response:", errorData);
+                throw new Error("Failed to send PDF request");
+            }
+
+            const data = await response.json();
+            console.log("✅ PDF Task Created:", data);
+
+            const taskId = data.Response;
+
+            // Poll for task completion
+            const pdfFile = await pollTaskStatus(taskId);
+
+            // Open the PDF in a popup
+            if (pdfFile) {
+                showPdfPopup(pdfFile);
+            }
+        } catch (error) {
+            console.error("⚠️ Error generating PDF:", error);
+        }
+    });
+
+    function showPdfPopup(pdfUrl) {
+        console.log("📄 Opening PDF popup:", pdfUrl);
+
+        let popupHtml = `
+            <div class="popup-overlay">
+                <div class="popup-container pdf-popup">
+                    <h2>Generated PDF</h2>
+                    <iframe src="${pdfUrl}" class="pdf-frame"></iframe>
+                    <div class="popup-buttons">
+                        <button id="cancel-popup">Close</button>
+                        <a href="${pdfUrl}" download="handwriting.pdf">
+                            <button>Download PDF</button>
+                        </a>
+                    </div>
+                </div>
+            </div>`;
+
+        document.body.insertAdjacentHTML("beforeend", popupHtml);
+
+        document.getElementById("cancel-popup").addEventListener("click", () => {
+            document.querySelector(".popup-overlay").remove();
+        });
+    }
+
+
 
 
 </script>
