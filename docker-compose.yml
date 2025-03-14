@@ -1,0 +1,25 @@
+services:
+  web:
+    build: .
+    container_name: django_app
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    volumes:
+      - .:/text_to_handwriting
+      - ./media:/text_to_handwriting/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: ["celery", "-A", "text_to_handwritting", "worker", "--loglevel=info"]
+    depends_on:
+      - redis

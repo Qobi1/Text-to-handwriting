@@ -11,6 +11,7 @@ from api.serializers import TextToHandwritingSerializer, ConvertImageToPdfSerial
 from app.tasks import text_to_handwriting, convert_images_to_pdf
 from celery.result import AsyncResult
 from django.core.files.storage import default_storage
+from text_to_handwritting.settings import BACKEND_URL
 
 
 class TextToHandwritingAPIView(APIView):
