@@ -129,15 +129,13 @@ def text_to_handwriting(
     pdf_filename = f"handwriting_{timestamp}.pdf"
     pdf_io = BytesIO()
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')  # ✅ Get PDF as bytes
+    pdf_bytes = pdf.output(pdf_io)  # ✅ Get PDF as bytes
     pdf_io.write(pdf_bytes)  # ✅ Write bytes to BytesIO
     pdf_io.seek(0)  # Move pointer to the beginning
 
     # ✅ Save to S3
     pdf_path = default_storage.save(pdf_filename, pdf_io)
     pdf_url = default_storage.url(pdf_path)  # ✅ Get full URL
-
-    print(pdf_url)  # Debugging
 
     return pdf_url  # ✅ Return the correct URL
 
