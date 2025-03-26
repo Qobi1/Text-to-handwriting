@@ -1,5 +1,7 @@
-from django.shortcuts import render
-
+from django.shortcuts import render, redirect
+from .models import Contact
+from .forms import ContactForm
+from django.contrib import messages
 
 
 def index(request):
@@ -11,7 +13,15 @@ def main(request):
 
 
 def contact(request):
-    return render(request, 'contact.html')
+    if request.method == 'POST':
+        form = ContactForm(data=request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Request is saved, we will contact u soon!")
+            return redirect('contact')
+    else:
+        form = ContactForm()
+    return render(request, 'contact.html', {'form': form})
 
 
 def about(request):

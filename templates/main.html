@@ -22,6 +22,12 @@
         <label for="ink-color">Ink Color</label>
         <input type="color" id="ink-color" value="#000000">
 
+        <label for="padding-left">Left Padding</label>
+        <input type="range" id="padding-left" min="0" max="100" value="10">
+
+        <label for="padding-right">Right Padding</label>
+        <input type="range" id="padding-right" min="0" max="100" value="10">
+
         <label for="handwriting-font">Handwriting Font</label>
         <select id="handwriting-font">
             <option value="handwriting_1">Handwriting 1</option>
@@ -75,6 +81,25 @@
     const generateImageBtn = document.getElementById('generate-image');
     const generatePdfBtn = document.getElementById('generate-pdf');
     const backgroundFile = document.getElementById("upload-background").files[0];
+    const paddingLeftInput = document.getElementById('padding-left');
+    const paddingRightInput = document.getElementById('padding-right');
+
+    paddingLeftInput.addEventListener('input', () => {
+        editableText.style.paddingLeft = `${paddingLeftInput.value}px`;
+    });
+
+    paddingRightInput.addEventListener('input', () => {
+        editableText.style.paddingRight = `${paddingRightInput.value}px`;
+    });
+
+    function getCSRFToken() {
+        return document.cookie.split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+    }
+    const csrfToken = getCSRFToken();
+
+
 
     window.onload = function () {
         handwritingFontSelect.value = 'handwriting_1'; // Set dropdown to handwriting_1
@@ -148,6 +173,7 @@
 
 
     document.getElementById("generate-image").addEventListener("click", async function () {
+        showLoading("Generating Image...");
         const editableText = document.getElementById("editable-text").innerText.trim();
         const fontSize = document.getElementById("font-size").value;
         const lineSpacing = document.getElementById("line-spacing").value;
@@ -155,6 +181,8 @@
         const inkColor = document.getElementById("ink-color").value;
         const handwritingFont = document.getElementById("handwriting-font").value;
         const backgroundFile = document.getElementById("upload-background").files[0];
+        const paddingLeftInput = document.getElementById('padding-left');
+        const paddingRightInput = document.getElementById('padding-right');
 
         // ✅ Use FormData for file uploads
         const formData = new FormData();
@@ -162,10 +190,11 @@
         formData.append("ink_color", inkColor);
         formData.append("font_size", parseInt(fontSize));
         formData.append("line_spacing", parseInt(lineSpacing));
-        formData.append("word_spacing", parseInt(letterSpacing));
         formData.append("font", handwritingFont);
         formData.append("is_image", true);
-        formData.append("x_offset", 10);
+        formData.append("letter_spacing", parseInt(letterSpacing));
+        formData.append("left_padding", parseInt(paddingLeftInput.value));
+        formData.append("right_padding", parseInt(paddingRightInput.value));
 
         // ✅ Append the background image **only if it's selected**
         if (backgroundFile) {
@@ -179,6 +208,9 @@
             const response = await fetch("/api/text-to-handwriting/", {
                 method: "POST",
                 body: formData,
+                headers: {
+                    "X-CSRFToken": csrfToken  // ✅ Add CSRF token
+                },
             });
 
             console.log("📥 Response received:", response);
@@ -203,6 +235,7 @@
         } catch (error) {
             console.error("⚠️ Error:", error);
         }
+        hideLoading();
     });
 
 
@@ -271,14 +304,32 @@
         document.querySelector(".popup-overlay").remove();
     });
 
-    document.getElementById("download-selected").addEventListener("click", () => {
-        document.querySelectorAll(".image-item input:checked").forEach((checkbox) => {
+document.getElementById("download-selected").addEventListener("click", async () => {
+    const selectedImages = document.querySelectorAll(".image-item input:checked");
+
+    for (let i = 0; i < selectedImages.length; i++) {
+        const imageUrl = selectedImages[i].value;
+        const fileName = `handwriting_${i + 1}.png`;
+
+        try {
+            const response = await fetch(imageUrl, { mode: "cors" }); // Fetch the file
+            const blob = await response.blob(); // Convert to blob
+
             const link = document.createElement("a");
-            link.href = checkbox.value;
-            link.download = "handwriting.png";
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+
+            document.body.appendChild(link);
             link.click();
-        });
-    });
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href); // Clean up URL
+
+        } catch (error) {
+            console.error("Failed to download:", error);
+        }
+    }
+});
+
 
     document.getElementById("generate-pdf").addEventListener("click", () => {
         const pdf = new jsPDF();
@@ -298,11 +349,8 @@
 }
 
 
-
-
-
-
     document.getElementById("generate-pdf").addEventListener("click", async function () {
+        showLoading("Generating PDF...");
         const editableText = document.getElementById("editable-text").innerText.trim();
         const fontSize = document.getElementById("font-size").value;
         const lineSpacing = document.getElementById("line-spacing").value;
@@ -334,6 +382,9 @@
             const response = await fetch("/api/text-to-handwriting/", {
                 method: "POST",
                 body: formData,
+                headers: {
+                    "X-CSRFToken": csrfToken  // ✅ Add CSRF token
+                },
             });
 
             if (!response.ok) {
@@ -357,31 +408,99 @@
         } catch (error) {
             console.error("⚠️ Error generating PDF:", error);
         }
+        hideLoading();
     });
 
     function showPdfPopup(pdfUrl) {
-        console.log("📄 Opening PDF popup:", pdfUrl);
+    console.log("📄 Opening PDF popup:", pdfUrl);
 
-        let popupHtml = `
-            <div class="popup-overlay">
-                <div class="popup-container pdf-popup">
-                    <h2>Generated PDF</h2>
-                    <iframe src="${pdfUrl}" class="pdf-frame"></iframe>
-                    <div class="popup-buttons">
-                        <button id="cancel-popup">Close</button>
-                        <a href="${pdfUrl}" download="handwriting.pdf">
-                            <button>Download PDF</button>
-                        </a>
-                    </div>
+    let popupHtml = `
+        <div class="popup-overlay">
+            <div class="popup-container pdf-popup">
+                <h2>Generated PDF</h2>
+                <iframe src="${pdfUrl}" class="pdf-frame"></iframe>
+                <div class="popup-buttons">
+                    <button id="cancel-popup">Close</button>
+                    <button id="download-pdf">Download PDF</button>
                 </div>
+            </div>
+        </div>`;
+
+    document.body.insertAdjacentHTML("beforeend", popupHtml);
+
+    document.getElementById("cancel-popup").addEventListener("click", () => {
+        document.querySelector(".popup-overlay").remove();
+    });
+
+    document.getElementById("download-pdf").addEventListener("click", async () => {
+        try {
+            const response = await fetch(pdfUrl, { mode: "cors" }); // Fetch PDF
+            const blob = await response.blob(); // Convert to blob
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "handwriting.pdf"; // Force download
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href); // Clean up URL
+
+        } catch (error) {
+            console.error("Failed to download PDF:", error);
+        }
+    });
+}
+
+
+    // Create Loading Spinner
+    function showLoading(message = "Processing...") {
+        const loadingHtml = `
+            <div class="loading-overlay">
+                <div class="loading-spinner"></div>
+                <p>${message}</p>
             </div>`;
+        document.body.insertAdjacentHTML("beforeend", loadingHtml);
+    }
 
-        document.body.insertAdjacentHTML("beforeend", popupHtml);
+    function hideLoading() {
+        const loadingOverlay = document.querySelector(".loading-overlay");
+        if (loadingOverlay) loadingOverlay.remove();
+    }
 
-        document.getElementById("cancel-popup").addEventListener("click", () => {
-            document.querySelector(".popup-overlay").remove();
+    // Image Size Validation
+    function validateImageSize(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = function () {
+                if (img.width === 2500 && img.height === 2500) {
+                    resolve(true);
+                } else {
+                    reject("Uploaded image must be 2500x2500.");
+                }
+            };
+            img.onerror = () => reject("Failed to load image.");
+            img.src = URL.createObjectURL(file);
         });
     }
+
+    // Modified Upload Background Logic
+    uploadBackgroundInput.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            try {
+                await validateImageSize(file); // Ensure correct size
+                const url = URL.createObjectURL(file);
+                editableText.style.backgroundImage = `url(${url})`;
+                editableText.style.backgroundSize = 'cover';
+                editableText.style.backgroundPosition = 'center';
+            } catch (error) {
+                alert(error);
+                uploadBackgroundInput.value = ""; // Clear invalid file
+            }
+        }
+    });
+
 
 
 

@@ -28,7 +28,6 @@ class TextToHandwritingAPIView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         background_image = request.FILES.get("background_image", None)  # Get uploaded file
-
         if serializer.is_valid():
             validated_data = serializer.validated_data
             if background_image:
@@ -41,7 +40,6 @@ class TextToHandwritingAPIView(APIView):
                     for chunk in background_image.chunks():
                         f.write(chunk)
                 validated_data["background_image"] = file_path
-
             task = text_to_handwriting.delay(**validated_data)
             return Response({"Response": task.id}, status=HTTP_200_OK, content_type='application/json')
         return Response(serializer.errors, status=HTTP_400_BAD_REQUEST, content_type='application/json')
@@ -84,18 +82,15 @@ class TaskStatusView(APIView):
         if task_result.state == "SUCCESS":
             # Ensure it's a single file path
             if isinstance(task_result.result, str) and task_result.result.endswith('pdf'):
+                print(task_result.result)
                 # Get the filename from the full file path
                 filename = os.path.basename(task_result.result)
+                print(filename)
                 # Build the URL to access the file via Django
                 image_urls = request.build_absolute_uri(settings.MEDIA_URL + filename)
             else:
                 # Convert file paths to URLs
-                pdf_paths = task_result.result  # List of local file paths
-                media_url = request.build_absolute_uri(settings.MEDIA_URL)  # Base media URL
-
-                image_urls = [
-                    media_url + os.path.basename(path) for path in pdf_paths
-                ]
+                image_urls = task_result.result  # List of local file paths
 
             return Response({"status": "completed", "path": image_urls}, status=HTTP_200_OK)
         elif task_result.state == "FAILURE":

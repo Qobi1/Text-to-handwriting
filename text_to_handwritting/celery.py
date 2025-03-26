@@ -1,9 +1,9 @@
 import os
 from celery import Celery
-
+import django
 # Укажите название Django-проекта
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'text_to_handwritting.settings')
-
+django.setup()
 app = Celery('text_to_handwritting')
 
 # Загружаем настройки из Django

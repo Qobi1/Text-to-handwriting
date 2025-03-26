@@ -39,7 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'drf_spectacular'
+    'drf_spectacular',
+    'api',
+    'app',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -127,10 +130,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
@@ -149,7 +148,6 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Redis password in server
-REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', None)
 REDIS_HOST = os.getenv('REDIS_HOST', None)
 
 CACHES = {
@@ -169,4 +167,34 @@ LOCALE_PATHS = [
 ]
 
 BACKEND_URL = os.getenv('BACKEND_URL', None)
+X_FRAME_OPTIONS = "ALLOWALL"
 
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# Storing files/images to TimeWeb S3 bucket
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', None)
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', None)
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', None)
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', None)
+AWS_S3_SIGNATURE_VERSION = os.getenv('AWS_S3_SIGNATURE_VERSION', None)
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', None)
+
+# Configure media files to use S3
+if AWS_S3_ENDPOINT_URL and AWS_STORAGE_BUCKET_NAME:
+    # Use S3
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+else:
+    # Local storage fallback
+
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+from django.core.files.storage import default_storage
+print(default_storage.__class__.__name__)  # Should print "S3Boto3Storage"

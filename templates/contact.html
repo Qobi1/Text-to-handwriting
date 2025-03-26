@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 {% block context %}
 <!-- contact section -->
+{% if messages %}
+<div class="alert alert-dismissible fade show">
+    {% for message in messages %}
+    <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <section class="contact_section layout_padding">
     <div class="container">
@@ -11,18 +23,19 @@
         </div>
         <div class="row">
             <div class="col-md-6">
-                <form action="">
+                <form action="{% url 'contact' %}" method="post">
+                    {% csrf_token %}
                     <div>
-                        <input type="text" placeholder="Name"/>
+                        <input type="text" name="name" class="form-control" placeholder="Name"/>
                     </div>
                     <div>
-                        <input type="text" placeholder="Phone Number"/>
+                        <input type="text" name="phone_number" class="form-control" placeholder="Phone Number"/>
                     </div>
                     <div>
-                        <input type="email" placeholder="Email"/>
+                        <input type="email" name="email" class="form-control" placeholder="Email"/>
                     </div>
                     <div>
-                        <input type="text" class="message-box" placeholder="Message"/>
+                        <input type="text" name="message" class="form-control" class="message-box" placeholder="Message"/>
                     </div>
                     <div class="d-flex ">
                         <button>
