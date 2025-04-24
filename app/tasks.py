@@ -127,17 +127,25 @@ def text_to_handwriting(
         pdf.image(tmp_file_path, x=10, y=10, w=pdf.w - 20)
 
     pdf_filename = f"handwriting_{timestamp}.pdf"
-    pdf_io = BytesIO()
 
-    pdf_bytes = pdf.output(pdf_io)  # ✅ Get PDF as bytes
-    pdf_io.write(pdf_bytes)  # ✅ Write bytes to BytesIO
-    pdf_io.seek(0)  # Move pointer to the beginning
+    # Save to a temporary file first
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_pdf:
+        tmp_pdf_path = tmp_pdf.name
+        pdf.output(tmp_pdf_path)
 
-    # ✅ Save to S3
+    # Read the file into memory
+    with open(tmp_pdf_path, 'rb') as f:
+        pdf_io = BytesIO(f.read())
+    pdf_io.seek(0)
+
+    # Upload to S3
     pdf_path = default_storage.save(pdf_filename, pdf_io)
-    pdf_url = default_storage.url(pdf_path)  # ✅ Get full URL
+    pdf_url = default_storage.url(pdf_path)
 
-    return pdf_url  # ✅ Return the correct URL
+    # Optional: clean up the temp file
+    os.remove(tmp_pdf_path)
+
+    return pdf_url
 
 
 def fetch_s3_image(image_url):
