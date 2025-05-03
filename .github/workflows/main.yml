@@ -51,8 +51,19 @@ jobs:
           key: ${{ secrets.CLOUD_SSH_KEY }}
           port: 22
           script: |
+            # Navigate to the correct directory
             cd /home/ubuntu/Text-to-handwriting
-            git pull https://$GITHUB_TOKEN@github.com/username/repo.git main
+            
+            # Configure git to use GITHUB_TOKEN for authentication
+            git config --global url."https://$GITHUB_TOKEN@github.com/".insteadOf "https://github.com/"
+            
+            # Pull the latest changes from the main branch
+            git pull origin main
+            
+            # Ensure Docker permissions are set correctly
+            sudo usermod -aG docker $USER
+            sudo systemctl restart docker
+
+            # Restart Docker containers
             docker-compose down
             docker-compose up --build -d
-
