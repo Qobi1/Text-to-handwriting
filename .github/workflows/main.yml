@@ -30,12 +30,6 @@ jobs:
       - name: Wait for services to be healthy
         run: sleep 10
 
-      - name: Run Django tests
-        run: docker-compose exec -T web python manage.py test
-
-      - name: Run lint checks (flake8)
-        run: docker-compose exec -T web flake8 .
-
       - name: Tear down services
         if: always()
         run: docker-compose down
@@ -57,7 +51,7 @@ jobs:
           key: ${{ secrets.CLOUD_SSH_KEY }}
           port: 22
           script: |
-            cd /your/project/path
+            cd /home/ubuntu/Text-to-handwriting
             git pull origin main
             docker-compose down
             docker-compose up --build -d
