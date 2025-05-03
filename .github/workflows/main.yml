@@ -1,0 +1,57 @@
+name: Django CI/CD with Celery and Redis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Django Tests in Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Compose
+        run: docker-compose -f docker-compose.yml build
+
+      - name: Start services
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Wait for services to be healthy
+        run: sleep 10
+
+      - name: Run Django tests
+        run: docker-compose exec -T web python manage.py test
+
+      - name: Run lint checks (flake8)
+        run: docker-compose exec -T web flake8 .
+
+      - name: Tear down services
+        if: always()
+        run: docker-compose down
+
+  deploy:
+    name: Deploy to Production Server
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.CLOUD_HOST }}
+          username: ${{ secrets.CLOUD_USER }}
+          key: ${{ secrets.CLOUD_SSH_KEY }}
+          port: 22
+          script: |
+            cd /your/project/path
+            git pull origin main
+            docker-compose down
+            docker-compose up --build -d
