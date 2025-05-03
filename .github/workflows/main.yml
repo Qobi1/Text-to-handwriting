@@ -48,7 +48,6 @@ jobs:
         with:
           host: ${{ secrets.CLOUD_HOST }}
           username: ${{ secrets.CLOUD_USER }}
-          key: ${{ secrets.CLOUD_SSH_KEY }}
           port: 22
           script: |
             cd /home/ubuntu/Text-to-handwriting
