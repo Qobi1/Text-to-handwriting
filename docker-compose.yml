@@ -23,3 +23,6 @@ services:
     command: ["celery", "-A", "text_to_handwritting", "worker", "--loglevel=info"]
     depends_on:
       - redis
+    volumes:
+      - .:/text_to_handwritting
+      - /var/run/docker.sock:/var/run/docker.sock  # Allow Docker access
